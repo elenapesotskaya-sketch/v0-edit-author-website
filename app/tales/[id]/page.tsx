@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useParams } from "next/navigation"
 import Link from "next/link"
 import { ArrowLeft, Heart, MessageCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -11,12 +11,10 @@ import { AuthorLogin } from "@/components/author-login"
 import { AuthorDashboard } from "@/components/author-dashboard"
 import { getTale, getComments, addComment, getLikes, toggleLike } from "@/lib/store"
 import type { Tale, Comment } from "@/lib/types"
-export default function TalePage({
-  params,
-}: {
-  params: { id: string }
-}) {
-  const { id } = params
+
+export default function TalePage() {
+  const params = useParams()
+  const id = typeof params.id === "string" ? params.id : ""
   const router = useRouter()
   const [isAuthorLoggedIn, setIsAuthorLoggedIn] = useState(false)
   const [tale, setTale] = useState<Tale | null>(null)
@@ -25,14 +23,18 @@ export default function TalePage({
   const [hasLiked, setHasLiked] = useState(false)
   const [newComment, setNewComment] = useState("")
   const [userName, setUserName] = useState("")
+  const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
+    setMounted(true)
     // Load saved user name
     const savedName = localStorage.getItem("user_name")
     if (savedName) setUserName(savedName)
   }, [])
 
   useEffect(() => {
+    if (!mounted || !id) return
+
     const loadedTale = getTale(id)
     if (loadedTale) {
       setTale(loadedTale)
@@ -62,16 +64,16 @@ export default function TalePage({
       window.removeEventListener("comments-updated", handleUpdate)
       window.removeEventListener("likes-updated", handleUpdate)
     }
-  }, [id])
+  }, [id, mounted])
 
   if (isAuthorLoggedIn) {
     return <AuthorDashboard onLogout={() => setIsAuthorLoggedIn(false)} />
   }
 
-  if (!tale) {
+  if (!mounted || !tale) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <p className="text-xl text-slate-600">Tale not found</p>
+      <div className="min-h-screen bg-gradient-to-b from-amber-50 to-white dark:from-slate-900 dark:to-slate-800 flex items-center justify-center">
+        <p className="text-xl text-slate-600">Загрузка рассказа...</p>
       </div>
     )
   }

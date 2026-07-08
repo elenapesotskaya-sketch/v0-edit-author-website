@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Scroll, LogOut, Edit3 } from "lucide-react"
+import { Scroll, LogOut, Edit3, Upload } from "lucide-react"
 import type { Tale } from "@/lib/types"
 
 interface AuthorDashboardProps {
@@ -117,6 +117,18 @@ function EditTaleDialog({ tale, onSave }: { tale: Tale; onSave: (tale: Tale) => 
     }))
   }
 
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      const reader = new FileReader()
+      reader.onload = (event) => {
+        const base64 = event.target?.result as string
+        handleFieldChange("image", base64)
+      }
+      reader.readAsDataURL(file)
+    }
+  }
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
@@ -190,19 +202,35 @@ function EditTaleDialog({ tale, onSave }: { tale: Tale; onSave: (tale: Tale) => 
           {/* Image Tab */}
           <TabsContent value="image" className="space-y-4">
             <div>
+              <label className="text-sm font-medium mb-2 block">Загрузить изображение</label>
+              <div className="flex items-center gap-2">
+                <Input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageUpload}
+                  className="flex-1"
+                />
+                <Upload className="h-4 w-4 text-slate-400" />
+              </div>
+              <p className="text-xs text-slate-500 mt-1">или введите URL вручную</p>
+            </div>
+            <div>
               <label className="text-sm font-medium mb-2 block">URL изображения</label>
               <Input
                 value={formData.image}
                 onChange={(e) => handleFieldChange("image", e.target.value)}
-                placeholder="/path/to/image.jpg"
+                placeholder="/path/to/image.jpg или https://..."
               />
             </div>
             {formData.image && (
-              <div className="relative aspect-video overflow-hidden rounded-lg">
+              <div className="relative aspect-video overflow-hidden rounded-lg bg-slate-100 dark:bg-slate-700">
                 <img
                   src={formData.image}
                   alt={formData.title}
                   className="w-full h-full object-cover"
+                  onError={(e) => {
+                    console.error("[v0] Error loading image:", e)
+                  }}
                 />
               </div>
             )}
