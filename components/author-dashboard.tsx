@@ -18,6 +18,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
+import { DataImportPanel } from "./data-import-panel"
 import type { Tale } from "@/lib/types"
 
 interface AuthorDashboardProps {
@@ -80,6 +81,7 @@ export function AuthorDashboard({ onLogout }: AuthorDashboardProps) {
 
   return (
     <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 overflow-auto">
+      <DataImportPanel onImportSuccess={loadTales} />
       <div className="min-h-screen p-4">
         <div className="max-w-6xl mx-auto">
           {/* Header */}
