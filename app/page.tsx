@@ -5,15 +5,12 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Heart, MessageCircle } from "lucide-react"
-import { EditModeToggle } from "@/components/edit-mode-toggle"
-import { EditableText } from "@/components/editable-text"
-import { EditableImage } from "@/components/editable-image"
-import { DataExportPanel } from "@/components/data-export-panel" // Added export panel
-import { useEditMode } from "@/contexts/edit-mode-context"
+import { AuthorLogin } from "@/components/author-login"
+import { AuthorDashboard } from "@/components/author-dashboard"
 import type { Tale } from "@/lib/types"
 
 export default function HomePage() {
-  const { isEditMode } = useEditMode()
+  const [isAuthorLoggedIn, setIsAuthorLoggedIn] = useState(false)
   const [author, setAuthor] = useState({
     name: "Katherine Peterson",
     tagline: "Weaver of Words, Keeper of Stories",
@@ -56,21 +53,17 @@ export default function HomePage() {
     }
   }, [])
 
-  const updateAuthor = async (field: string, value: string) => {
-    const updated = { ...author, [field]: value }
-    setAuthor(updated)
-    const { saveAuthorInfo } = await import("@/lib/store")
-    saveAuthorInfo(updated)
-  }
-
   if (!mounted) {
     return null
   }
 
+  if (isAuthorLoggedIn) {
+    return <AuthorDashboard onLogout={() => setIsAuthorLoggedIn(false)} />
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-amber-50 to-white dark:from-slate-900 dark:to-slate-800">
-      <EditModeToggle />
-      {isEditMode && <DataExportPanel />}
+      <AuthorLogin onLogin={() => setIsAuthorLoggedIn(true)} />
 
       {/* Header */}
       <header className="border-b border-slate-200 dark:border-slate-700 bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm sticky top-0 z-40">
@@ -102,26 +95,15 @@ export default function HomePage() {
         <div className="grid md:grid-cols-2 gap-12 items-center">
           <div>
             <h1 className="text-5xl md:text-7xl font-serif font-bold text-slate-900 dark:text-slate-100 mb-4">
-              <EditableText
-                value={author.name}
-                onChange={(value) => updateAuthor("name", value)}
-                className="font-serif font-bold"
-              />
+              {author.name}
             </h1>
             <p className="text-xl text-amber-700 dark:text-amber-400 mb-6 italic">
-              <EditableText
-                value={author.tagline}
-                onChange={(value) => updateAuthor("tagline", value)}
-                className="italic"
-              />
+              {author.tagline}
             </p>
             <div className="prose prose-lg dark:prose-invert text-balance">
-              <EditableText
-                value={author.bio}
-                onChange={(value) => updateAuthor("bio", value)}
-                multiline
-                className="text-slate-700 dark:text-slate-300"
-              />
+              <p className="text-slate-700 dark:text-slate-300">
+                {author.bio}
+              </p>
             </div>
             <div className="mt-8">
               <Link href="/stories">
@@ -132,12 +114,10 @@ export default function HomePage() {
             </div>
           </div>
           <div className="relative">
-            <EditableImage
+            <img
               src={author.image}
               alt={author.name}
-              onChange={(value) => updateAuthor("image", value)}
-              className="rounded-2xl shadow-2xl"
-              aspectRatio="aspect-square"
+              className="rounded-2xl shadow-2xl w-full h-full object-cover aspect-square"
             />
           </div>
         </div>
@@ -148,12 +128,9 @@ export default function HomePage() {
         <div className="container mx-auto px-4">
           <h2 className="text-4xl font-serif font-bold text-slate-900 dark:text-slate-100 mb-6">Самолетные рассказы</h2>
           <div className="prose prose-lg dark:prose-invert max-w-none">
-            <EditableText
-              value={author.genreDescription}
-              onChange={(value) => updateAuthor("genreDescription", value)}
-              multiline
-              className="text-slate-700 dark:text-slate-300 leading-relaxed text-pretty"
-            />
+            <p className="text-slate-700 dark:text-slate-300 leading-relaxed text-pretty">
+              {author.genreDescription}
+            </p>
           </div>
         </div>
       </section>

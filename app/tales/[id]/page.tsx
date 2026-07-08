@@ -3,28 +3,14 @@
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { ArrowLeft, Heart, MessageCircle, Calendar, Clock, Trash2 } from "lucide-react"
+import { ArrowLeft, Heart, MessageCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
-import { EditModeToggle } from "@/components/edit-mode-toggle"
-import { EditableText } from "@/components/editable-text"
-import { EditableImage } from "@/components/editable-image"
-import { useEditMode } from "@/contexts/edit-mode-context"
-import { getTale, saveTale, deleteTale, getComments, addComment, getLikes, toggleLike } from "@/lib/store"
+import { AuthorLogin } from "@/components/author-login"
+import { AuthorDashboard } from "@/components/author-dashboard"
+import { getTale, getComments, addComment, getLikes, toggleLike } from "@/lib/store"
 import type { Tale, Comment } from "@/lib/types"
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog"
-
 export default function TalePage({
   params,
 }: {
@@ -32,7 +18,7 @@ export default function TalePage({
 }) {
   const { id } = params
   const router = useRouter()
-  const { isEditMode } = useEditMode()
+  const [isAuthorLoggedIn, setIsAuthorLoggedIn] = useState(false)
   const [tale, setTale] = useState<Tale | null>(null)
   const [comments, setComments] = useState<Comment[]>([])
   const [likes, setLikes] = useState(0)
@@ -78,18 +64,16 @@ export default function TalePage({
     }
   }, [id])
 
+  if (isAuthorLoggedIn) {
+    return <AuthorDashboard onLogout={() => setIsAuthorLoggedIn(false)} />
+  }
+
   if (!tale) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <p className="text-xl text-slate-600">Tale not found</p>
       </div>
     )
-  }
-
-  const updateTale = (field: keyof Tale, value: string) => {
-    const updated = { ...tale, [field]: value }
-    setTale(updated)
-    saveTale(updated)
   }
 
   const handleLike = () => {
@@ -127,14 +111,9 @@ export default function TalePage({
     setNewComment("")
   }
 
-  const handleDelete = () => {
-    deleteTale(id)
-    router.push("/stories")
-  }
-
   return (
     <div className="min-h-screen bg-gradient-to-b from-amber-50 to-white dark:from-slate-900 dark:to-slate-800">
-      <EditModeToggle />
+      <AuthorLogin onLogin={() => setIsAuthorLoggedIn(true)} />
 
       <header className="border-b border-slate-200 dark:border-slate-700 bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm sticky top-0 z-40">
         <div className="container mx-auto px-4 py-4">
@@ -172,73 +151,32 @@ export default function TalePage({
         {/* Title and Meta */}
         <header className="mb-8">
           <h1 className="text-4xl md:text-6xl font-serif font-bold text-slate-900 dark:text-slate-100 mb-4">
-            <EditableText
-              value={tale.title}
-              onChange={(value) => updateTale("title", value)}
-              className="font-serif font-bold"
-            />
+            {tale.title}
           </h1>
 
           <div className="flex flex-wrap items-center gap-4 text-slate-600 dark:text-slate-400 mb-6">
-            <div className="flex items-center gap-2">
-              <Calendar className="h-4 w-4" />
-              <EditableText value={tale.publishedDate} onChange={(value) => updateTale("publishedDate", value)} />
-            </div>
-            <div className="flex items-center gap-2">
-              <Clock className="h-4 w-4" />
-              <EditableText value={tale.readingTime} onChange={(value) => updateTale("readingTime", value)} />
-            </div>
+            <div className="text-sm">{tale.publishedDate}</div>
+            <div className="text-sm">•</div>
+            <div className="text-sm">{tale.readingTime}</div>
           </div>
 
           <p className="text-xl text-slate-700 dark:text-slate-300 italic mb-6">
-            <EditableText
-              value={tale.summary}
-              onChange={(value) => updateTale("summary", value)}
-              multiline
-              className="italic"
-            />
+            {tale.summary}
           </p>
-
-          {isEditMode && (
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button variant="destructive" size="sm" className="gap-2">
-                  <Trash2 className="h-4 w-4" />
-                  Delete Tale
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Delete this tale?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    This action cannot be undone. This will permanently delete the tale and all its comments.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction onClick={handleDelete}>Delete</AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          )}
         </header>
 
         {/* Featured Image */}
-        <EditableImage
+        <img
           src={tale.image}
           alt={tale.title}
-          onChange={(value) => updateTale("image", value)}
-          className="mb-12 rounded-xl shadow-2xl"
+          className="mb-12 rounded-xl shadow-2xl w-full h-auto"
         />
 
         {/* Story Content */}
         <div className="prose prose-lg dark:prose-invert max-w-none mb-12">
-          <EditableText
-            value={tale.fullText}
-            onChange={(value) => updateTale("fullText", value)}
-            multiline
-            className="whitespace-pre-wrap leading-relaxed text-slate-800 dark:text-slate-200"
-          />
+          <p className="whitespace-pre-wrap leading-relaxed text-slate-800 dark:text-slate-200">
+            {tale.fullText}
+          </p>
         </div>
 
         <Separator className="my-8" />

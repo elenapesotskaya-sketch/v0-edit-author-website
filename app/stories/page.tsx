@@ -2,19 +2,18 @@
 
 import { useState, useEffect } from "react"
 import Link from "next/link"
-import { Search, ArrowUpDown, Heart, MessageCircle, Plus } from "lucide-react"
+import { Search, ArrowUpDown, Heart, MessageCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { EditModeToggle } from "@/components/edit-mode-toggle"
-import { DataExportPanel } from "@/components/data-export-panel"
-import { useEditMode } from "@/contexts/edit-mode-context"
-import { getTales, saveTales } from "@/lib/store"
+import { AuthorLogin } from "@/components/author-login"
+import { AuthorDashboard } from "@/components/author-dashboard"
+import { getTales } from "@/lib/store"
 import type { Tale } from "@/lib/types"
 
 export default function StoriesPage() {
-  const { isEditMode } = useEditMode()
+  const [isAuthorLoggedIn, setIsAuthorLoggedIn] = useState(false)
   const [tales, setTales] = useState<Tale[]>([])
   const [searchQuery, setSearchQuery] = useState("")
   const [sortBy, setSortBy] = useState<"date" | "title" | "likes">("date")
@@ -37,21 +36,7 @@ export default function StoriesPage() {
     }
   }, [])
 
-  const addNewTale = () => {
-    const newTale: Tale = {
-      id: Date.now().toString(),
-      title: "New Tale",
-      summary: "Click to edit summary...",
-      fullText: "Write your story here...",
-      image: "/story-illustration.jpg",
-      likes: 0,
-      publishedDate: new Date().toISOString().split("T")[0],
-      readingTime: "5 min read",
-    }
-    const updated = [...tales, newTale]
-    setTales(updated)
-    saveTales(updated)
-  }
+
 
   const filteredTales = tales.filter((tale) => {
     const query = searchQuery.toLowerCase()
@@ -75,39 +60,16 @@ export default function StoriesPage() {
   })
 
   if (!mounted) {
-    return (
-      <div className="min-h-screen bg-gradient-to-b from-amber-50 to-white dark:from-slate-900 dark:to-slate-800">
-        <header className="border-b border-slate-200 dark:border-slate-700 bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm sticky top-0 z-40">
-          <div className="container mx-auto px-4 py-4">
-            <div className="flex items-center justify-between">
-              <Link href="/" className="text-2xl font-serif font-bold text-slate-900 dark:text-slate-100">
-                KP
-              </Link>
-              <nav className="flex items-center gap-6">
-                <Link
-                  href="/stories"
-                  className="text-slate-900 dark:text-slate-100 font-medium border-b-2 border-slate-900 dark:border-slate-100 pb-1"
-                >
-                  Stories
-                </Link>
-                <Link
-                  href="/"
-                  className="text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100"
-                >
-                  Home
-                </Link>
-              </nav>
-            </div>
-          </div>
-        </header>
-      </div>
-    )
+    return null
+  }
+
+  if (isAuthorLoggedIn) {
+    return <AuthorDashboard onLogout={() => setIsAuthorLoggedIn(false)} />
   }
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-amber-50 to-white dark:from-slate-900 dark:to-slate-800">
-      <EditModeToggle />
-      {isEditMode && <DataExportPanel />}
+      <AuthorLogin onLogin={() => setIsAuthorLoggedIn(true)} />
 
       <header className="border-b border-slate-200 dark:border-slate-700 bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm sticky top-0 z-40">
         <div className="container mx-auto px-4 py-4">
@@ -162,12 +124,6 @@ export default function StoriesPage() {
                 <SelectItem value="likes">Sort by Likes</SelectItem>
               </SelectContent>
             </Select>
-            {isEditMode && (
-              <Button onClick={addNewTale} className="gap-2">
-                <Plus className="h-4 w-4" />
-                Add Story
-              </Button>
-            )}
           </div>
         </div>
 
