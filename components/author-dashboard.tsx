@@ -1,13 +1,13 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Scroll, LogOut, Edit3, Upload, Trash2 } from "lucide-react"
+import { Scroll, LogOut, Edit3, Upload, Trash2, Bold, Italic } from "lucide-react"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -137,10 +137,57 @@ function EditTaleDialog({
   const [open, setOpen] = useState(false)
   const [formData, setFormData] = useState(tale)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
+
+  // Sync formData when tale changes or dialog opens
+  useEffect(() => {
+    if (open) {
+      setFormData(tale)
+    }
+  }, [open, tale])
 
   const handleSave = () => {
     onSave(formData)
     setOpen(false)
+  }
+
+  const applyFormatting = (format: 'bold' | 'italic') => {
+    if (!textareaRef.current) return
+
+    const textarea = textareaRef.current
+    const start = textarea.selectionStart
+    const end = textarea.selectionEnd
+    const selectedText = textarea.value.substring(start, end)
+
+    if (!selectedText) return
+
+    let formattedText = selectedText
+    if (format === 'bold') {
+      formattedText = `**${selectedText}**`
+    } else if (format === 'italic') {
+      formattedText = `_${selectedText}_`
+    }
+
+    const newText = textarea.value.substring(0, start) + formattedText + textarea.value.substring(end)
+    handleFieldChange('fullText', newText)
+
+    // Restore cursor position
+    setTimeout(() => {
+      textarea.focus()
+      textarea.setSelectionRange(start + formattedText.length, start + formattedText.length)
+    }, 0)
+  }
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.ctrlKey || e.metaKey) {
+      if (e.key === 'b') {
+        e.preventDefault()
+        applyFormatting('bold')
+      } else if (e.key === 'i') {
+        e.preventDefault()
+        applyFormatting('italic')
+      }
+    }
   }
 
   const handleFieldChange = (field: keyof Tale, value: string | number) => {
@@ -229,9 +276,38 @@ function EditTaleDialog({
           <TabsContent value="content" className="space-y-4">
             <div>
               <label className="text-sm font-medium mb-2 block">Текст рассказа</label>
+              <div className="flex gap-2 mb-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => applyFormatting('bold')}
+                  title="Жирный (Ctrl+B)"
+                  className="gap-2"
+                >
+                  <Bold className="h-4 w-4" />
+                  Жирный
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => applyFormatting('italic')}
+                  title="Курсив (Ctrl+I)"
+                  className="gap-2"
+                >
+                  <Italic className="h-4 w-4" />
+                  Курсив
+                </Button>
+                <div className="text-xs text-slate-500 flex items-center">
+                  Используйте **текст** для жирного и _текст_ для курсива
+                </div>
+              </div>
               <Textarea
+                ref={textareaRef}
                 value={formData.fullText}
                 onChange={(e) => handleFieldChange("fullText", e.target.value)}
+                onKeyDown={handleKeyDown}
                 placeholder="Полный текст рассказа"
                 rows={12}
               />
