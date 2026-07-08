@@ -17,7 +17,7 @@ export default function HomePage() {
     bio: "Katherine Peterson is an acclaimed author whose enchanting tales transport readers to worlds of wonder and imagination.",
     genreDescription:
       "Лёгкий, почти невесомый диалог, в котором бытовые сцены незаметно превращаются в философские петли, а каламбуры естественно сплетаются с идеями о технологиях. Настоящие путешествия в этих рассказах происходят в голове — между буквами, смыслами и вопросами, которые цепляются друг за друга и продолжают звучать тихим эхом, заставляя читателя ещё долго мысленно возвращаться к тому, что скрыто между строк.",
-    image: "/professional-author-portrait.png",
+    image: "/author-portrait.png",
   })
   const [tales, setTales] = useState<Tale[]>([])
   const [mounted, setMounted] = useState(false)
