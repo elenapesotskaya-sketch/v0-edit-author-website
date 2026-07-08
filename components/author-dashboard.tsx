@@ -7,7 +7,17 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Scroll, LogOut, Edit3, Upload } from "lucide-react"
+import { Scroll, LogOut, Edit3, Upload, Trash2 } from "lucide-react"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import type { Tale } from "@/lib/types"
 
 interface AuthorDashboardProps {
@@ -51,6 +61,19 @@ export function AuthorDashboard({ onLogout }: AuthorDashboardProps) {
     }
   }
 
+  const deleteTale = async (taleId: string) => {
+    try {
+      const { getTales, saveTales } = await import("@/lib/store")
+      const allTales = getTales()
+      const filtered = allTales.filter((t) => t.id !== taleId)
+      saveTales(filtered)
+      setTales(filtered)
+      window.dispatchEvent(new Event("tales-updated"))
+    } catch (error) {
+      console.error("[v0] Error deleting tale:", error)
+    }
+  }
+
   if (!mounted) {
     return null
   }
@@ -90,6 +113,7 @@ export function AuthorDashboard({ onLogout }: AuthorDashboardProps) {
                   <EditTaleDialog
                     tale={tale}
                     onSave={updateTale}
+                    onDelete={deleteTale}
                   />
                 </CardContent>
               </Card>
@@ -101,9 +125,18 @@ export function AuthorDashboard({ onLogout }: AuthorDashboardProps) {
   )
 }
 
-function EditTaleDialog({ tale, onSave }: { tale: Tale; onSave: (tale: Tale) => void }) {
+function EditTaleDialog({
+  tale,
+  onSave,
+  onDelete,
+}: {
+  tale: Tale
+  onSave: (tale: Tale) => void
+  onDelete: (taleId: string) => void
+}) {
   const [open, setOpen] = useState(false)
   const [formData, setFormData] = useState(tale)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
 
   const handleSave = () => {
     onSave(formData)
@@ -127,6 +160,12 @@ function EditTaleDialog({ tale, onSave }: { tale: Tale; onSave: (tale: Tale) => 
       }
       reader.readAsDataURL(file)
     }
+  }
+
+  const handleDelete = () => {
+    onDelete(tale.id)
+    setOpen(false)
+    setShowDeleteConfirm(false)
   }
 
   return (
@@ -237,19 +276,49 @@ function EditTaleDialog({ tale, onSave }: { tale: Tale; onSave: (tale: Tale) => 
           </TabsContent>
         </Tabs>
 
-        <div className="flex gap-2 justify-end mt-6">
+        <div className="flex gap-2 justify-between mt-6">
+          <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Удалить рассказ?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Это действие нельзя отменить. Рассказ "{tale.title}" будет удален
+                  окончательно.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Отменить</AlertDialogCancel>
+                <AlertDialogAction onClick={handleDelete} className="bg-red-600 hover:bg-red-700">
+                  Удалить
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+
           <Button
-            variant="outline"
-            onClick={() => {
-              setFormData(tale)
-              setOpen(false)
-            }}
+            variant="destructive"
+            size="sm"
+            onClick={() => setShowDeleteConfirm(true)}
+            className="gap-2"
           >
-            Отменить
+            <Trash2 className="h-4 w-4" />
+            Удалить
           </Button>
-          <Button onClick={handleSave}>
-            Сохранить изменения
-          </Button>
+
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setFormData(tale)
+                setOpen(false)
+              }}
+            >
+              Отменить
+            </Button>
+            <Button onClick={handleSave}>
+              Сохранить изменения
+            </Button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>
