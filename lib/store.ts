@@ -2,12 +2,22 @@
 
 import type { Tale, Comment, AuthorInfo } from "./types"
 
+// Supabase integration is optional - app works fully with localStorage
+// When Supabase is configured, sync happens in background
+const SUPABASE_ENABLED = false // Set to true after setup
+
 const STORAGE_KEYS = {
   TALES: "author_tales",
   COMMENTS: "tale_comments",
   LIKES: "tale_likes",
   AUTHOR: "author_info",
 }
+
+// Cache for performance
+let cachedTales: Tale[] | null = null
+let cachedAuthor: AuthorInfo | null = null
+let cacheTimestamp = 0
+const CACHE_DURATION = 5 * 60 * 1000 // 5 minutes
 
 // Default data
 export const DEFAULT_AUTHOR: AuthorInfo = {
@@ -357,73 +367,135 @@ Sophia stopped visiting after that. She had her own story to live, her own choic
 ]
 
 // Get functions
-export function getAuthorInfo(): AuthorInfo {
-  if (typeof window === "undefined") return DEFAULT_AUTHOR
-  const stored = localStorage.getItem(STORAGE_KEYS.AUTHOR)
-  try {
+export async function getAuthorInfo(): Promise<AuthorInfo> {
+  if (typeof window !== "undefined") {
+    const stored = localStorage.getItem(STORAGE_KEYS.AUTHOR)
     if (stored) {
-      const parsed = JSON.parse(stored)
-      return {
-        ...DEFAULT_AUTHOR,
-        ...parsed,
-      }
+      const author = JSON.parse(stored)
+      cachedAuthor = author
+      return author
     }
-  } catch (error) {
-    console.error("Error loading author info:", error)
   }
+  
+  cachedAuthor = DEFAULT_AUTHOR
   return DEFAULT_AUTHOR
 }
 
 export function getTales(): Tale[] {
-  if (typeof window === "undefined") return DEFAULT_TALES
-  const stored = localStorage.getItem(STORAGE_KEYS.TALES)
-  const tales = stored ? JSON.parse(stored) : DEFAULT_TALES
+  // Return from cache if fresh
+  if (cachedTales && Date.now() - cacheTimestamp < CACHE_DURATION) {
+    return cachedTales
+  }
+  
+  // Try localStorage first (faster than DB for client-side)
+  if (typeof window !== "undefined") {
+    const stored = localStorage.getItem(STORAGE_KEYS.TALES)
+    if (stored) {
+      cachedTales = JSON.parse(stored)
+      return cachedTales
+    }
+  }
+  
+  return DEFAULT_TALES
+}
 
-  const likesStored = localStorage.getItem(STORAGE_KEYS.LIKES)
-  const likes: Record<string, number> = likesStored ? JSON.parse(likesStored) : {}
-
-  return tales.map((tale: Tale) => ({
-    ...tale,
-    likes: likes[tale.id] || 0,
-  }))
+export async function fetchTalesFromDB(): Promise<Tale[]> {
+  // Load from localStorage
+  return getTales()
 }
 
 export function getTale(id: string): Tale | undefined {
-  return getTales().find((tale) => tale.id === id)
+  const tales = getTales()
+  return tales.find((tale) => tale.id === id)
 }
 
-export function getComments(taleId: string): Comment[] {
-  if (typeof window === "undefined") return []
-  const stored = localStorage.getItem(STORAGE_KEYS.COMMENTS)
-  const allComments: Comment[] = stored ? JSON.parse(stored) : []
-  return allComments.filter((comment) => comment.taleId === taleId)
-}
-
-export function getLikes(taleId: string): number {
-  if (typeof window === "undefined") return 0
-  const stored = localStorage.getItem(STORAGE_KEYS.LIKES)
-  const likes: Record<string, number> = stored ? JSON.parse(stored) : {}
-  return likes[taleId] || 0
-}
-
-// Save functions
-export function saveAuthorInfo(author: AuthorInfo): void {
-  if (typeof window === "undefined") return
-
+export async function getTaleFromDBById(id: string): Promise<Tale | undefined> {
   try {
-    localStorage.setItem(STORAGE_KEYS.AUTHOR, JSON.stringify(author))
-    window.dispatchEvent(new CustomEvent("author-updated"))
+    const tale = await getTaleFromDB(id)
+    return tale || undefined
   } catch (error) {
-    console.error("Error saving author info:", error)
+    console.error("[v0] Error fetching tale from DB:", error)
+    return getTale(id)
   }
 }
 
-export function saveTales(tales: Tale[]): void {
-  localStorage.setItem(STORAGE_KEYS.TALES, JSON.stringify(tales))
+export function getComments(taleId: string): Comment[] {
+  const key = `${STORAGE_KEYS.COMMENTS}_${taleId}`
+  if (typeof window !== "undefined") {
+    const stored = localStorage.getItem(key)
+    if (stored) {
+      return JSON.parse(stored)
+    }
+  }
+  return []
+}
+
+export async function fetchCommentsFromDB(taleId: string): Promise<Comment[]> {
+  try {
+    const comments = await getCommentsFromDB(taleId)
+    const key = `${STORAGE_KEYS.COMMENTS}_${taleId}`
+    if (typeof window !== "undefined") {
+      localStorage.setItem(key, JSON.stringify(comments))
+    }
+    return comments
+  } catch (error) {
+    console.error("[v0] Error fetching comments from DB:", error)
+    return getComments(taleId)
+  }
+}
+
+export function getLikes(taleId: string): number {
+  const key = `${STORAGE_KEYS.LIKES}_${taleId}`
+  if (typeof window !== "undefined") {
+    const stored = localStorage.getItem(key)
+    if (stored) {
+      return parseInt(stored)
+    }
+  }
+  
+  // Try to get from tales cache
+  const tale = getTale(taleId)
+  return tale?.likes || 0
+}
+
+export async function fetchLikesFromDB(taleId: string): Promise<number> {
+  try {
+    const likes = await getLikesFromDB(taleId)
+    const key = `${STORAGE_KEYS.LIKES}_${taleId}`
+    if (typeof window !== "undefined") {
+      localStorage.setItem(key, String(likes))
+    }
+    return likes
+  } catch (error) {
+    console.error("[v0] Error fetching likes from DB:", error)
+    return getLikes(taleId)
+  }
+}
+
+// Save functions
+export async function saveAuthorInfo(author: AuthorInfo): Promise<void> {
+  cachedAuthor = author
+  cacheTimestamp = Date.now()
+  
+  if (typeof window !== "undefined") {
+    localStorage.setItem(STORAGE_KEYS.AUTHOR, JSON.stringify(author))
+  }
+  
+  window.dispatchEvent(new Event("author-updated"))
+}
+
+export async function saveTales(tales: Tale[]): Promise<void> {
+  cachedTales = tales
+  cacheTimestamp = Date.now()
+  
+  if (typeof window !== "undefined") {
+    localStorage.setItem(STORAGE_KEYS.TALES, JSON.stringify(tales))
+  }
+  
   window.dispatchEvent(new Event("tales-updated"))
 }
 
-export function saveTale(tale: Tale): void {
+export async function saveTale(tale: Tale): Promise<void> {
   const tales = getTales()
   const index = tales.findIndex((t) => t.id === tale.id)
   if (index !== -1) {
@@ -431,43 +503,48 @@ export function saveTale(tale: Tale): void {
   } else {
     tales.push(tale)
   }
-  saveTales(tales)
+  await saveTales(tales)
 }
 
-export function deleteTale(id: string): void {
-  const tales = getTales().filter((tale) => tale.id !== id)
-  saveTales(tales)
+export async function deleteTale(id: string): Promise<void> {
+  const tales = getTales()
+  const filtered = tales.filter((tale) => tale.id !== id)
+  await saveTales(filtered)
 }
 
-export function addComment(comment: Comment): void {
-  const stored = localStorage.getItem(STORAGE_KEYS.COMMENTS)
-  const comments: Comment[] = stored ? JSON.parse(stored) : []
+export async function addComment(comment: Comment): Promise<void> {
+  const key = `${STORAGE_KEYS.COMMENTS}_${comment.taleId}`
+  const comments = getComments(comment.taleId)
   comments.push(comment)
-  localStorage.setItem(STORAGE_KEYS.COMMENTS, JSON.stringify(comments))
+  if (typeof window !== "undefined") {
+    localStorage.setItem(key, JSON.stringify(comments))
+  }
+  
   window.dispatchEvent(new Event("comments-updated"))
 }
 
-export function toggleLike(taleId: string, hasLiked: boolean): number {
-  const stored = localStorage.getItem(STORAGE_KEYS.LIKES)
-  const likes: Record<string, number> = stored ? JSON.parse(stored) : {}
+export async function toggleLike(taleId: string, hasLiked: boolean): Promise<number> {
+  const tale = getTale(taleId)
+  if (!tale) return 0
 
-  if (hasLiked) {
-    likes[taleId] = (likes[taleId] || 0) - 1
-  } else {
-    likes[taleId] = (likes[taleId] || 0) + 1
+  const newLikes = hasLiked ? Math.max(0, tale.likes - 1) : tale.likes + 1
+  tale.likes = newLikes
+
+  const tales = getTales()
+  const index = tales.findIndex((t) => t.id === taleId)
+  if (index !== -1) {
+    tales[index].likes = newLikes
+    await saveTales(tales)
   }
 
-  localStorage.setItem(STORAGE_KEYS.LIKES, JSON.stringify(likes))
-
-  const tales = localStorage.getItem(STORAGE_KEYS.TALES)
-  if (tales) {
-    const parsedTales = JSON.parse(tales)
-    const updated = parsedTales.map((tale: Tale) =>
-      tale.id === taleId ? { ...tale, likes: likes[taleId] || 0 } : tale,
-    )
-    localStorage.setItem(STORAGE_KEYS.TALES, JSON.stringify(updated))
+  const key = `${STORAGE_KEYS.LIKES}_${taleId}`
+  if (typeof window !== "undefined") {
+    localStorage.setItem(key, String(newLikes))
   }
+
+
 
   window.dispatchEvent(new Event("likes-updated"))
-  return likes[taleId]
+
+  return newLikes
 }

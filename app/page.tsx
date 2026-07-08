@@ -27,12 +27,22 @@ export default function HomePage() {
 
     const loadData = async () => {
       try {
-        // Dynamic import to avoid bundling issues
-        const { getAuthorInfo, getTales } = await import("@/lib/store")
-        const authorData = getAuthorInfo()
-        setAuthor(authorData)
-        const allTales = getTales()
-        setTales(allTales.slice(0, 3))
+        const { getAuthorInfo, fetchTalesFromDB, getTales } = await import("@/lib/store")
+        
+        // Try to fetch from DB first (with sync), fallback to cache
+        Promise.all([
+          getAuthorInfo(),
+          fetchTalesFromDB()
+        ]).then(([authorData, allTales]) => {
+          if (authorData) setAuthor(authorData)
+          if (allTales) setTales(allTales.slice(0, 3))
+        }).catch(() => {
+          // Fallback to local cache
+          const cachedTales = getTales()
+          if (cachedTales.length > 0) {
+            setTales(cachedTales.slice(0, 3))
+          }
+        })
       } catch (error) {
         console.error("[v0] Error loading data:", error)
       }

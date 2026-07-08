@@ -35,18 +35,31 @@ export default function TalePage() {
   useEffect(() => {
     if (!mounted || !id) return
 
-    const loadedTale = getTale(id)
-    if (loadedTale) {
-      setTale(loadedTale)
-      setComments(getComments(id))
-      setLikes(getLikes(id))
+    const loadData = async () => {
+      const { getTale, getTaleFromDBById, getComments, fetchCommentsFromDB, getLikes, fetchLikesFromDB } = await import("@/lib/store")
+      
+      // Try to fetch from DB first, fallback to local cache
+      const loadedTale = await getTaleFromDBById(id) || getTale(id)
+      if (loadedTale) {
+        setTale(loadedTale)
+        
+        // Fetch comments and likes
+        const comments = await fetchCommentsFromDB(id) || getComments(id)
+        setComments(comments)
+        
+        const likes = await fetchLikesFromDB(id)
+        setLikes(likes)
 
-      // Check if user has liked this tale
-      const likedTales = JSON.parse(localStorage.getItem("user_liked_tales") || "[]")
-      setHasLiked(likedTales.includes(id))
+        // Check if user has liked this tale
+        const likedTales = JSON.parse(localStorage.getItem("user_liked_tales") || "[]")
+        setHasLiked(likedTales.includes(id))
+      }
     }
 
-    const handleUpdate = () => {
+    loadData()
+
+    const handleUpdate = async () => {
+      const { getTale, getComments, getLikes } = await import("@/lib/store")
       const updated = getTale(id)
       if (updated) {
         setTale(updated)
@@ -78,8 +91,9 @@ export default function TalePage() {
     )
   }
 
-  const handleLike = () => {
-    const newLikes = toggleLike(id, hasLiked)
+  const handleLike = async () => {
+    const { toggleLike } = await import("@/lib/store")
+    const newLikes = await toggleLike(id, hasLiked)
     setLikes(newLikes)
     setHasLiked(!hasLiked)
 
@@ -94,7 +108,7 @@ export default function TalePage() {
     }
   }
 
-  const handleAddComment = () => {
+  const handleAddComment = async () => {
     if (!newComment.trim() || !userName.trim()) return
 
     const comment: Comment = {
@@ -108,7 +122,8 @@ export default function TalePage() {
     // Save user name for future comments
     localStorage.setItem("user_name", userName.trim())
 
-    addComment(comment)
+    const { addComment } = await import("@/lib/store")
+    await addComment(comment)
     setComments([...comments, comment])
     setNewComment("")
   }

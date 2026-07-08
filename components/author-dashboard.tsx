@@ -52,7 +52,7 @@ export function AuthorDashboard({ onLogout }: AuthorDashboardProps) {
       const index = allTales.findIndex((t) => t.id === updatedTale.id)
       if (index !== -1) {
         allTales[index] = updatedTale
-        saveTales(allTales)
+        await saveTales(allTales)
         setTales(allTales)
         setEditingTale(null)
         window.dispatchEvent(new Event("tales-updated"))
@@ -64,10 +64,11 @@ export function AuthorDashboard({ onLogout }: AuthorDashboardProps) {
 
   const deleteTale = async (taleId: string) => {
     try {
-      const { getTales, saveTales } = await import("@/lib/store")
+      const { getTales, saveTales, deleteTale: deleteTaleFromStore } = await import("@/lib/store")
       const allTales = getTales()
       const filtered = allTales.filter((t) => t.id !== taleId)
-      saveTales(filtered)
+      await saveTales(filtered)
+      await deleteTaleFromStore(taleId)
       setTales(filtered)
       window.dispatchEvent(new Event("tales-updated"))
     } catch (error) {
