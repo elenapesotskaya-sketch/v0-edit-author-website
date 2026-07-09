@@ -2,10 +2,6 @@
 
 import type { Tale, Comment, AuthorInfo } from "./types"
 
-// Supabase integration is optional - app works fully with localStorage
-// When Supabase is configured, sync happens in background
-const SUPABASE_ENABLED = false // Set to true after setup
-
 const STORAGE_KEYS = {
   TALES: "author_tales",
   COMMENTS: "tale_comments",
