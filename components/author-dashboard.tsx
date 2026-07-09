@@ -34,25 +34,34 @@ export function AuthorDashboard({ onLogout }: AuthorDashboardProps) {
     loadTales()
   }, [])
 
-  const exportChanges = () => {
-    const talesJSON = JSON.stringify(tales, null, 2)
-    const exportCode = `export const DEFAULT_TALES: Tale[] = ${talesJSON}`
-    
-    const element = document.createElement('a')
-    element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(exportCode))
-    element.setAttribute('download', 'updated-tales.ts')
-    element.style.display = 'none'
-    document.body.appendChild(element)
-    element.click()
-    document.body.removeChild(element)
+  const [isSaving, setIsSaving] = useState(false)
+
+  const saveChanges = async () => {
+    setIsSaving(true)
+    try {
+      const response = await fetch("/api/admin/save-stories", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ tales }),
+      })
+
+      const result = await response.json()
+
+      if (result.success) {
+        alert(`✓ Изменения сохранены на GitHub!\nКоммит: ${result.commit}`)
+      } else {
+        alert(`✗ Ошибка при сохранении: ${result.message}`)
+      }
+    } catch (error) {
+      alert(`✗ Ошибка сети: ${error instanceof Error ? error.message : "Unknown error"}`)
+    } finally {
+      setIsSaving(false)
+    }
   }
 
-  const handleLogout = async () => {
-    const hasChanges = JSON.stringify(tales) !== JSON.stringify([])
-    if (hasChanges) {
-      alert("Перед выходом экспортируйте ваши изменения, чтобы сохранить их!")
-      exportChanges()
-    }
+  const handleLogout = () => {
     onLogout()
   }
 
@@ -113,13 +122,13 @@ export function AuthorDashboard({ onLogout }: AuthorDashboardProps) {
             </div>
             <div className="flex gap-2">
               <Button
-                variant="outline"
                 size="sm"
-                onClick={exportChanges}
-                className="gap-2"
+                onClick={saveChanges}
+                disabled={isSaving}
+                className="gap-2 bg-green-600 hover:bg-green-700 text-white"
               >
                 <Upload className="h-4 w-4" />
-                Сохранить изменения
+                {isSaving ? "Сохраняю..." : "Сохранить на GitHub"}
               </Button>
               <Button
                 variant="outline"
