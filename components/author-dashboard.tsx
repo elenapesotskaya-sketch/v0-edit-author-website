@@ -39,12 +39,15 @@ export function AuthorDashboard({ onLogout }: AuthorDashboardProps) {
   const saveChanges = async () => {
     setIsSaving(true)
     try {
+      const { getAuthorInfo } = await import("@/lib/store")
+      const authorInfo = await getAuthorInfo()
+
       const response = await fetch("/api/admin/save-stories", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ tales }),
+        body: JSON.stringify({ tales, author: authorInfo }),
       })
 
       const result = await response.json()

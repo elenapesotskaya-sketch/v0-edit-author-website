@@ -10,8 +10,9 @@ interface GitHubResponse {
 }
 
 export async function saveStoriesToGitHub(
-  content: string,
-  message: string = "Update stories data"
+  stories: any,
+  authorInfo: any,
+  message: string = "Update stories from admin panel"
 ): Promise<GitHubResponse> {
   if (!GITHUB_TOKEN) {
     return {
@@ -21,9 +22,17 @@ export async function saveStoriesToGitHub(
   }
 
   try {
+    // Generate TypeScript code for lib/store.ts
+    const fileContent = `import type { Tale, AuthorInfo } from "./types"
+
+export const DEFAULT_AUTHOR: AuthorInfo = ${JSON.stringify(authorInfo, null, 2)}
+
+export const DEFAULT_TALES: Tale[] = ${JSON.stringify(stories, null, 2)}
+`
+
     // Get current file SHA
     const getShaResponse = await fetch(
-      `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/data/stories.json?ref=${GITHUB_BRANCH}`,
+      `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/lib/store.ts?ref=${GITHUB_BRANCH}`,
       {
         method: "GET",
         headers: {
@@ -37,14 +46,21 @@ export async function saveStoriesToGitHub(
     if (getShaResponse.ok) {
       const data = await getShaResponse.json()
       sha = data.sha
+    } else if (getShaResponse.status !== 404) {
+      const error = await getShaResponse.json()
+      console.error("[v0] GitHub API error (get SHA):", error)
+      return {
+        success: false,
+        message: `GitHub API error: ${error.message || "Unknown error"}`,
+      }
     }
 
     // Encode content to base64
-    const encodedContent = Buffer.from(content).toString("base64")
+    const encodedContent = Buffer.from(fileContent).toString("base64")
 
     // Update file
     const updateResponse = await fetch(
-      `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/data/stories.json`,
+      `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/lib/store.ts`,
       {
         method: "PUT",
         headers: {
@@ -53,7 +69,7 @@ export async function saveStoriesToGitHub(
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          message: `${message} - Auto-save from admin panel`,
+          message: `${message} - ${new Date().toLocaleString()}`,
           content: encodedContent,
           branch: GITHUB_BRANCH,
           ...(sha && { sha }),
@@ -73,7 +89,7 @@ export async function saveStoriesToGitHub(
     const result = await updateResponse.json()
     return {
       success: true,
-      message: "Stories saved to GitHub successfully",
+      message: "Changes committed to GitHub successfully",
       sha: result.commit.sha,
     }
   } catch (error) {

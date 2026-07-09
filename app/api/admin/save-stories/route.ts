@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server"
 import { saveStoriesToGitHub } from "@/lib/github-api"
-import type { Tale } from "@/lib/types"
+import type { Tale, AuthorInfo } from "@/lib/types"
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { tales }: { tales: Tale[] } = body
+    const { tales, author } }: { tales: Tale[]; author?: AuthorInfo } = body
 
     if (!Array.isArray(tales)) {
       return NextResponse.json(
@@ -14,19 +14,17 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Generate the TypeScript code for stories
-    const storiesContent = generateStoryCode(tales)
-
     // Save to GitHub
     const result = await saveStoriesToGitHub(
-      storiesContent,
+      tales,
+      author || {},
       `Update ${tales.length} stories`
     )
 
     if (result.success) {
       return NextResponse.json({
         success: true,
-        message: "Stories saved successfully to GitHub",
+        message: "Changes saved successfully to GitHub",
         commit: result.sha,
       })
     } else {
@@ -48,12 +46,4 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     )
   }
-}
-
-function generateStoryCode(tales: Tale[]): string {
-  const talesJSON = JSON.stringify(tales, null, 2)
-  return `import type { Tale } from "./types"
-
-export const DEFAULT_TALES: Tale[] = ${talesJSON}
-`
 }
