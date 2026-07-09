@@ -34,6 +34,28 @@ export function AuthorDashboard({ onLogout }: AuthorDashboardProps) {
     loadTales()
   }, [])
 
+  const exportChanges = () => {
+    const talesJSON = JSON.stringify(tales, null, 2)
+    const exportCode = `export const DEFAULT_TALES: Tale[] = ${talesJSON}`
+    
+    const element = document.createElement('a')
+    element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(exportCode))
+    element.setAttribute('download', 'updated-tales.ts')
+    element.style.display = 'none'
+    document.body.appendChild(element)
+    element.click()
+    document.body.removeChild(element)
+  }
+
+  const handleLogout = async () => {
+    const hasChanges = JSON.stringify(tales) !== JSON.stringify([])
+    if (hasChanges) {
+      alert("Перед выходом экспортируйте ваши изменения, чтобы сохранить их!")
+      exportChanges()
+    }
+    onLogout()
+  }
+
   const loadTales = async () => {
     try {
       const { getTales } = await import("@/lib/store")
@@ -89,14 +111,25 @@ export function AuthorDashboard({ onLogout }: AuthorDashboardProps) {
               <Scroll className="h-6 w-6 text-amber-600" />
               <h1 className="text-2xl font-serif font-bold">Панель редактирования</h1>
             </div>
-            <Button
-              variant="outline"
-              onClick={onLogout}
-              className="gap-2"
-            >
-              <LogOut className="h-4 w-4" />
-              Выйти
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={exportChanges}
+                className="gap-2"
+              >
+                <Upload className="h-4 w-4" />
+                Сохранить изменения
+              </Button>
+              <Button
+                variant="outline"
+                onClick={handleLogout}
+                className="gap-2"
+              >
+                <LogOut className="h-4 w-4" />
+                Выйти
+              </Button>
+            </div>
           </div>
 
           {/* Tales Grid */}
