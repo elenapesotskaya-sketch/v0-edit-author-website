@@ -34,6 +34,40 @@ export function AuthorDashboard({ onLogout }: AuthorDashboardProps) {
     loadTales()
   }, [])
 
+  const [isSaving, setIsSaving] = useState(false)
+
+  const saveChanges = async () => {
+    setIsSaving(true)
+    try {
+      const { getAuthorInfo } = await import("@/lib/store")
+      const authorInfo = await getAuthorInfo()
+
+      const response = await fetch("/api/admin/save-stories", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ tales, author: authorInfo }),
+      })
+
+      const result = await response.json()
+
+      if (result.success) {
+        alert(`✓ Изменения сохранены на GitHub!\nКоммит: ${result.commit}`)
+      } else {
+        alert(`✗ Ошибка при сохранении: ${result.message}`)
+      }
+    } catch (error) {
+      alert(`✗ Ошибка сети: ${error instanceof Error ? error.message : "Unknown error"}`)
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  const handleLogout = () => {
+    onLogout()
+  }
+
   const loadTales = async () => {
     try {
       const { getTales } = await import("@/lib/store")
@@ -89,14 +123,25 @@ export function AuthorDashboard({ onLogout }: AuthorDashboardProps) {
               <Scroll className="h-6 w-6 text-amber-600" />
               <h1 className="text-2xl font-serif font-bold">Панель редактирования</h1>
             </div>
-            <Button
-              variant="outline"
-              onClick={onLogout}
-              className="gap-2"
-            >
-              <LogOut className="h-4 w-4" />
-              Выйти
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                onClick={saveChanges}
+                disabled={isSaving}
+                className="gap-2 bg-green-600 hover:bg-green-700 text-white"
+              >
+                <Upload className="h-4 w-4" />
+                {isSaving ? "Сохраняю..." : "Сохранить на GitHub"}
+              </Button>
+              <Button
+                variant="outline"
+                onClick={handleLogout}
+                className="gap-2"
+              >
+                <LogOut className="h-4 w-4" />
+                Выйти
+              </Button>
+            </div>
           </div>
 
           {/* Tales Grid */}
