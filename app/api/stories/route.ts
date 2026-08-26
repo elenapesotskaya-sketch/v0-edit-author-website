@@ -28,8 +28,10 @@ export async function GET() {
     `
     return NextResponse.json(stories)
   } catch (error) {
-    console.error("[v0] Story load failed", error)
-    return NextResponse.json({ error: "Unable to load stories" }, { status: 500 })
+    // Keep the public reader available when the database is temporarily unreachable.
+    // The client store will use its bundled stories when the API returns an empty list.
+    console.error("[v0] Story load failed; serving bundled-story fallback", error)
+    return NextResponse.json([], { status: 200 })
   }
 }
 
