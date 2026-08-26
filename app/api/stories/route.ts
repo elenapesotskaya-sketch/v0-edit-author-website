@@ -1,13 +1,21 @@
 import { NextResponse } from "next/server"
 import postgres from "postgres"
 
-const sql = postgres(process.env.POSTGRES_URL!, {
-  prepare: false,
-  max: 1,
-})
+function getDatabase() {
+  const connectionString = process.env.POSTGRES_PRISMA_URL || process.env.POSTGRES_URL
+  if (!connectionString) {
+    throw new Error("Database connection is not configured")
+  }
+
+  return postgres(connectionString, {
+    prepare: false,
+    max: 1,
+  })
+}
 
 export async function GET() {
   try {
+    const sql = getDatabase()
     const stories = await sql`
       select id, title, summary, full_text, image, likes, published_date, reading_time
       from public.stories
@@ -22,6 +30,7 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
+    const sql = getDatabase()
     const body = await request.json()
     const id = String(body.id ?? "").trim()
     const title = String(body.title ?? "").trim()
@@ -56,6 +65,7 @@ export async function POST(request: Request) {
 
 export async function DELETE(request: Request) {
   try {
+    const sql = getDatabase()
     const { id } = await request.json()
     await sql`delete from public.stories where id = ${String(id ?? "")}`
     return NextResponse.json({ ok: true })
