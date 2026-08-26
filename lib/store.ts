@@ -382,25 +382,23 @@ export function getTales(): Tale[] {
 }
 
 export async function fetchTalesFromDB(): Promise<Tale[]> {
-  const { supabase } = await import("@/lib/supabase")
-  const { data, error } = await supabase.from("stories").select("id,title,summary,full_text,image,likes,published_date,reading_time").order("published_date", { ascending: false })
-  if (error) throw error
-  const tales = (data ?? []).map(fromDbTale)
-  cachedTales = tales.length > 0 ? tales : DEFAULT_TALES
-  cacheTimestamp = Date.now()
-  return cachedTales
-}
+ const response = await fetch("/api/stories", { cache: "no-store" })
+ if (!response.ok) throw new Error("Unable to load stories")
+ const data = await response.json()
+ const tales = (Array.isArray(data) ? data : []).map(fromDbTale)
+ cachedTales = tales.length > 0 ? tales : DEFAULT_TALES
+ cacheTimestamp = Date.now()
+ return cachedTales
+ }
 
 export function getTale(id: string): Tale | undefined {
   return getTales().find((tale) => tale.id === id)
 }
 
 export async function getTaleFromDBById(id: string): Promise<Tale | undefined> {
-  const { supabase } = await import("@/lib/supabase")
-  const { data, error } = await supabase.from("stories").select("id,title,summary,full_text,image,likes,published_date,reading_time").eq("id", id).maybeSingle()
-  if (error) throw error
-  return data ? fromDbTale(data) : undefined
-}
+ const tales = await fetchTalesFromDB()
+ return tales.find((tale) => tale.id === id)
+ }
 
 function fromDbTale(row: any): Tale {
   return { id: row.id, title: row.title, summary: row.summary, fullText: row.full_text, image: row.image, likes: row.likes ?? 0, publishedDate: row.published_date, readingTime: row.reading_time }
