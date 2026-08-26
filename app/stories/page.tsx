@@ -21,10 +21,19 @@ export default function StoriesPage() {
 
   useEffect(() => {
     setMounted(true)
-    setTales(getTales())
+    const load = async () => {
+      try {
+        const { fetchTalesFromDB } = await import("@/lib/store")
+        setTales(await fetchTalesFromDB())
+      } catch (error) {
+        console.error("[v0] Error loading public stories:", error)
+        setTales(getTales())
+      }
+    }
+    load()
 
     const handleUpdate = () => {
-      setTales(getTales())
+      load()
     }
 
     window.addEventListener("tales-updated", handleUpdate)

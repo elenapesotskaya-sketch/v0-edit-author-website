@@ -378,41 +378,36 @@ export async function getAuthorInfo(): Promise<AuthorInfo> {
 }
 
 export function getTales(): Tale[] {
-  // Return from cache if fresh
-  if (cachedTales && Date.now() - cacheTimestamp < CACHE_DURATION) {
-    return cachedTales
-  }
-  
-  // Try localStorage first (faster than DB for client-side)
-  if (typeof window !== "undefined") {
-    const stored = localStorage.getItem(STORAGE_KEYS.TALES)
-    if (stored) {
-      cachedTales = JSON.parse(stored)
-      return cachedTales
-    }
-  }
-  
-  return DEFAULT_TALES
+  return cachedTales ?? DEFAULT_TALES
 }
 
 export async function fetchTalesFromDB(): Promise<Tale[]> {
-  // Load from localStorage
-  return getTales()
+  const { supabase } = await import("@/lib/supabase")
+  const { data, error } = await supabase.from("stories").select("id,title,summary,full_text,image,likes,published_date,reading_time").order("published_date", { ascending: false })
+  if (error) throw error
+  const tales = (data ?? []).map(fromDbTale)
+  cachedTales = tales.length > 0 ? tales : DEFAULT_TALES
+  cacheTimestamp = Date.now()
+  return cachedTales
 }
 
 export function getTale(id: string): Tale | undefined {
-  const tales = getTales()
-  return tales.find((tale) => tale.id === id)
+  return getTales().find((tale) => tale.id === id)
 }
 
 export async function getTaleFromDBById(id: string): Promise<Tale | undefined> {
-  try {
-    const tale = await getTaleFromDB(id)
-    return tale || undefined
-  } catch (error) {
-    console.error("[v0] Error fetching tale from DB:", error)
-    return getTale(id)
-  }
+  const { supabase } = await import("@/lib/supabase")
+  const { data, error } = await supabase.from("stories").select("id,title,summary,full_text,image,likes,published_date,reading_time").eq("id", id).maybeSingle()
+  if (error) throw error
+  return data ? fromDbTale(data) : undefined
+}
+
+function fromDbTale(row: any): Tale {
+  return { id: row.id, title: row.title, summary: row.summary, fullText: row.full_text, image: row.image, likes: row.likes ?? 0, publishedDate: row.published_date, readingTime: row.reading_time }
+}
+
+function toDbTale(tale: Tale) {
+  return { id: tale.id, title: tale.title, summary: tale.summary, full_text: tale.fullText, image: tale.image, likes: tale.likes, published_date: tale.publishedDate, reading_time: tale.readingTime, updated_at: new Date().toISOString() }
 }
 
 export function getComments(taleId: string): Comment[] {
@@ -481,31 +476,26 @@ export async function saveAuthorInfo(author: AuthorInfo): Promise<void> {
 }
 
 export async function saveTales(tales: Tale[]): Promise<void> {
+  const { supabase } = await import("@/lib/supabase")
+  const { error } = await supabase.from("stories").upsert(tales.map(toDbTale), { onConflict: "id" })
+  if (error) throw error
   cachedTales = tales
   cacheTimestamp = Date.now()
-  
-  if (typeof window !== "undefined") {
-    localStorage.setItem(STORAGE_KEYS.TALES, JSON.stringify(tales))
-  }
-  
-  window.dispatchEvent(new Event("tales-updated"))
+  if (typeof window !== "undefined") window.dispatchEvent(new Event("tales-updated"))
 }
 
 export async function saveTale(tale: Tale): Promise<void> {
-  const tales = getTales()
-  const index = tales.findIndex((t) => t.id === tale.id)
-  if (index !== -1) {
-    tales[index] = tale
-  } else {
-    tales.push(tale)
-  }
-  await saveTales(tales)
+  const response = await fetch("/api/stories", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(tale) })
+  if (!response.ok) throw new Error("Unable to save story")
+  cachedTales = [...getTales().filter((item) => item.id !== tale.id), tale]
+  if (typeof window !== "undefined") window.dispatchEvent(new Event("tales-updated"))
 }
 
 export async function deleteTale(id: string): Promise<void> {
-  const tales = getTales()
-  const filtered = tales.filter((tale) => tale.id !== id)
-  await saveTales(filtered)
+  const response = await fetch("/api/stories", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id }) })
+  if (!response.ok) throw new Error("Unable to delete story")
+  cachedTales = getTales().filter((tale) => tale.id !== id)
+  if (typeof window !== "undefined") window.dispatchEvent(new Event("tales-updated"))
 }
 
 export async function addComment(comment: Comment): Promise<void> {
