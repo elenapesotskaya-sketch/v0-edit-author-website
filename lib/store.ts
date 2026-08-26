@@ -382,14 +382,23 @@ export function getTales(): Tale[] {
 }
 
 export async function fetchTalesFromDB(): Promise<Tale[]> {
- const response = await fetch("/api/stories", { cache: "no-store" })
- if (!response.ok) throw new Error("Unable to load stories")
- const data = await response.json()
- const tales = (Array.isArray(data) ? data : []).map(fromDbTale)
- cachedTales = tales.length > 0 ? tales : DEFAULT_TALES
- cacheTimestamp = Date.now()
- return cachedTales
- }
+  try {
+    const response = await fetch("/api/stories", {
+      cache: "no-store",
+      signal: AbortSignal.timeout(5000),
+    })
+    if (!response.ok) throw new Error(`Stories API returned ${response.status}`)
+    const data = await response.json()
+    const tales = (Array.isArray(data) ? data : []).map(fromDbTale)
+    cachedTales = tales.length > 0 ? tales : DEFAULT_TALES
+    cacheTimestamp = Date.now()
+    return cachedTales
+  } catch (error) {
+    console.error("[v0] Story load failed; using bundled stories", error)
+    cachedTales = cachedTales ?? DEFAULT_TALES
+    return cachedTales
+  }
+}
 
 export function getTale(id: string): Tale | undefined {
   return getTales().find((tale) => tale.id === id)

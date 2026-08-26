@@ -2,7 +2,12 @@ import { NextResponse } from "next/server"
 import postgres from "postgres"
 
 function getDatabase() {
-  const connectionString = process.env.POSTGRES_PRISMA_URL || process.env.POSTGRES_URL
+  // Use the direct Supabase database connection first. The transaction pooler
+  // can reject the generated `postgres.<project-ref>` tenant in previews.
+  const connectionString =
+    process.env.POSTGRES_URL_NON_POOLING ||
+    process.env.POSTGRES_URL ||
+    process.env.POSTGRES_PRISMA_URL
   if (!connectionString) {
     throw new Error("Database connection is not configured")
   }
