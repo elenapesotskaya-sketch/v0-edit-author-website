@@ -382,21 +382,31 @@ export function getTales(): Tale[] {
 }
 
 export async function fetchTalesFromDB(): Promise<Tale[]> {
+  const fallback = cachedTales ?? DEFAULT_TALES
+
   try {
     const response = await fetch("/api/stories", {
       cache: "no-store",
       signal: AbortSignal.timeout(5000),
     })
-    if (!response.ok) throw new Error(`Stories API returned ${response.status}`)
-    const data = await response.json()
-    const tales = (Array.isArray(data) ? data : []).map(fromDbTale)
-    cachedTales = tales.length > 0 ? tales : DEFAULT_TALES
+
+    // A database/API failure must never reject the public reader. Keep the
+    // bundled catalogue available while the API recovers.
+    if (!response.ok) {
+      console.warn(`[v0] Stories API returned ${response.status}; using fallback`)
+      cachedTales = fallback
+      return fallback
+    }
+
+    const data: unknown = await response.json()
+    const tales = Array.isArray(data) ? data.map(fromDbTale).filter(Boolean) : []
+    cachedTales = tales.length > 0 ? tales : fallback
     cacheTimestamp = Date.now()
     return cachedTales
   } catch (error) {
-    console.error("[v0] Story load failed; using bundled stories", error)
-    cachedTales = cachedTales ?? DEFAULT_TALES
-    return cachedTales
+    console.warn("[v0] Story load unavailable; using bundled stories", error)
+    cachedTales = fallback
+    return fallback
   }
 }
 
