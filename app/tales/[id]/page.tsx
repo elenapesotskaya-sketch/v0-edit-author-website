@@ -12,6 +12,20 @@ import { AuthorDashboard } from "@/components/author-dashboard"
 import { getTale, getComments, addComment, getLikes, toggleLike } from "@/lib/store"
 import type { Tale, Comment } from "@/lib/types"
 
+function formatStoryDate(value: string): string {
+  const match = value.match(/^(\d{4})-(\d{2})/)
+  if (!match) return value
+
+  const [, year, month] = match
+  const date = new Date(Number(year), Number(month) - 1, 1)
+  const formatted = new Intl.DateTimeFormat("ru-RU", {
+    month: "long",
+    year: "numeric",
+  }).format(date)
+
+  return formatted.charAt(0).toUpperCase() + formatted.slice(1)
+}
+
 export default function TalePage() {
   const params = useParams()
   const id = typeof params.id === "string" ? params.id : ""
@@ -27,7 +41,6 @@ export default function TalePage() {
 
   useEffect(() => {
     setMounted(true)
-    // Load saved user name
     const savedName = localStorage.getItem("user_name")
     if (savedName) setUserName(savedName)
   }, [])
@@ -38,19 +51,16 @@ export default function TalePage() {
     const loadData = async () => {
       const { getTale, getTaleFromDBById, getComments, fetchCommentsFromDB, getLikes, fetchLikesFromDB } = await import("@/lib/store")
       
-      // Try to fetch from DB first, fallback to local cache
       const loadedTale = await getTaleFromDBById(id) || getTale(id)
       if (loadedTale) {
         setTale(loadedTale)
         
-        // Fetch comments and likes
         const comments = await fetchCommentsFromDB(id) || getComments(id)
         setComments(comments)
         
         const likes = await fetchLikesFromDB(id)
         setLikes(likes)
 
-        // Check if user has liked this tale
         const likedTales = JSON.parse(localStorage.getItem("user_liked_tales") || "[]")
         setHasLiked(likedTales.includes(id))
       }
@@ -97,7 +107,6 @@ export default function TalePage() {
     setLikes(newLikes)
     setHasLiked(!hasLiked)
 
-    // Save user's like state
     const likedTales = JSON.parse(localStorage.getItem("user_liked_tales") || "[]")
     if (hasLiked) {
       const filtered = likedTales.filter((taleId: string) => taleId !== id)
@@ -119,7 +128,6 @@ export default function TalePage() {
       timestamp: new Date().toISOString(),
     }
 
-    // Save user name for future comments
     localStorage.setItem("user_name", userName.trim())
 
     const { addComment } = await import("@/lib/store")
@@ -157,7 +165,6 @@ export default function TalePage() {
       </header>
 
       <article className="container mx-auto px-4 py-8 max-w-4xl">
-        {/* Back Button */}
         <Link href="/stories">
           <Button variant="ghost" className="mb-8 gap-2">
             <ArrowLeft className="h-4 w-4" />
@@ -165,14 +172,13 @@ export default function TalePage() {
           </Button>
         </Link>
 
-        {/* Title and Meta */}
         <header className="mb-8">
           <h1 className="text-4xl md:text-6xl font-serif font-bold text-slate-900 dark:text-slate-100 mb-4">
             {tale.title}
           </h1>
 
           <div className="flex flex-wrap items-center gap-4 text-slate-600 dark:text-slate-400 mb-6">
-            <div className="text-sm">{tale.publishedDate}</div>
+            <div className="text-sm">{formatStoryDate(tale.publishedDate)}</div>
             <div className="text-sm">•</div>
             <div className="text-sm">{tale.readingTime}</div>
           </div>
@@ -182,14 +188,12 @@ export default function TalePage() {
           </p>
         </header>
 
-        {/* Featured Image */}
         <img
           src={tale.image}
           alt={tale.title}
           className="mb-12 rounded-xl shadow-2xl w-full h-auto"
         />
 
-        {/* Story Content */}
         <div className="prose prose-lg dark:prose-invert max-w-none mb-12">
           <p className="whitespace-pre-wrap leading-relaxed text-slate-800 dark:text-slate-200">
             {tale.fullText}
@@ -198,7 +202,6 @@ export default function TalePage() {
 
         <Separator className="my-8" />
 
-        {/* Likes and Share */}
         <div className="flex items-center gap-4 mb-12">
           <Button variant={hasLiked ? "default" : "outline"} onClick={handleLike} className="gap-2">
             <Heart className={`h-4 w-4 ${hasLiked ? "fill-current" : ""}`} />
@@ -206,14 +209,12 @@ export default function TalePage() {
           </Button>
         </div>
 
-        {/* Comments Section */}
         <section className="mb-12">
           <h2 className="text-3xl font-serif font-bold text-slate-900 dark:text-slate-100 mb-6 flex items-center gap-2">
             <MessageCircle className="h-6 w-6" />
             Comments ({comments.length})
           </h2>
 
-          {/* Add Comment */}
           <Card className="mb-8">
             <CardHeader>
               <h3 className="text-lg font-semibold">Leave a Comment</h3>
@@ -238,7 +239,6 @@ export default function TalePage() {
             </CardContent>
           </Card>
 
-          {/* Comments List */}
           <div className="space-y-4">
             {comments.length === 0 ? (
               <p className="text-center text-slate-500 py-8">No comments yet. Be the first to share your thoughts!</p>
