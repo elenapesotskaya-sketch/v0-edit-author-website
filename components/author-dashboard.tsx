@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Scroll, LogOut, Edit3, Upload, Trash2, Bold, Italic, Plus } from "lucide-react"
+import { Scroll, LogOut, Edit3, Upload, Trash2, Bold, Italic, Plus, MessageCircle, X } from "lucide-react"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -169,6 +169,7 @@ export function AuthorDashboard({ onLogout }: AuthorDashboardProps) {
                   <p className="text-sm text-slate-600 dark:text-slate-400 mb-4 line-clamp-2">
                     {tale.summary}
                   </p>
+                  <CommentsManager taleId={tale.id} />
                   <EditTaleDialog
                     tale={tale}
                     onSave={updateTale}
@@ -180,6 +181,58 @@ export function AuthorDashboard({ onLogout }: AuthorDashboardProps) {
           </div>
         </div>
       </div>
+    </div>
+  )
+}
+
+function CommentsManager({ taleId }: { taleId: string }) {
+  const [comments, setComments] = useState<import("@/lib/types").Comment[]>([])
+
+  const loadComments = () => {
+    import("@/lib/store").then(({ getComments }) => setComments(getComments(taleId)))
+  }
+
+  useEffect(() => {
+    loadComments()
+    window.addEventListener("comments-updated", loadComments)
+    return () => window.removeEventListener("comments-updated", loadComments)
+  }, [taleId])
+
+  const handleDelete = async (commentId: string) => {
+    if (!window.confirm("Удалить этот комментарий?")) return
+    const { deleteComment } = await import("@/lib/store")
+    await deleteComment(taleId, commentId)
+    loadComments()
+  }
+
+  return (
+    <div className="mb-4 rounded-md border p-3">
+      <div className="mb-2 flex items-center gap-2 text-sm font-medium">
+        <MessageCircle className="h-4 w-4" />
+        Комментарии ({comments.length})
+      </div>
+      {comments.length === 0 ? (
+        <p className="text-xs text-muted-foreground">Комментариев пока нет</p>
+      ) : (
+        <div className="flex flex-col gap-2">
+          {comments.map((comment) => (
+            <div key={comment.id} className="flex items-start justify-between gap-2 rounded bg-muted/50 p-2 text-xs">
+              <div className="min-w-0">
+                <p className="font-medium">{comment.userName}</p>
+                <p className="break-words text-muted-foreground">{comment.text}</p>
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => handleDelete(comment.id)}
+                aria-label={`Удалить комментарий пользователя ${comment.userName}`}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

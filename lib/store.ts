@@ -519,6 +519,15 @@ export async function addComment(comment: Comment): Promise<void> {
   window.dispatchEvent(new Event("comments-updated"))
 }
 
+export async function deleteComment(taleId: string, commentId: string): Promise<void> {
+  const key = `${STORAGE_KEYS.COMMENTS}_${taleId}`
+  const comments = getComments(taleId).filter((comment) => comment.id !== commentId)
+  if (typeof window !== "undefined") {
+    localStorage.setItem(key, JSON.stringify(comments))
+    window.dispatchEvent(new Event("comments-updated"))
+  }
+}
+
 export async function toggleLike(taleId: string, hasLiked: boolean): Promise<number> {
   const tale = getTale(taleId)
   if (!tale) return 0
