@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Scroll, LogOut, Edit3, Upload, Trash2, Bold, Italic } from "lucide-react"
+import { Scroll, LogOut, Edit3, Upload, Trash2, Bold, Italic, Plus } from "lucide-react"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -75,6 +75,18 @@ export function AuthorDashboard({ onLogout }: AuthorDashboardProps) {
       setTales(allTales)
     } catch (error) {
       console.error("[v0] Error loading tales:", error)
+    }
+  }
+
+  const createTale = async (newTale: Tale) => {
+    try {
+      const { getTales, saveTales } = await import("@/lib/store")
+      const allTales = [...getTales(), newTale]
+      await saveTales(allTales)
+      setTales(allTales)
+      window.dispatchEvent(new Event("tales-updated"))
+    } catch (error) {
+      console.error("[v0] Error creating tale:", error)
     }
   }
 
@@ -146,6 +158,7 @@ export function AuthorDashboard({ onLogout }: AuthorDashboardProps) {
 
           {/* Tales Grid */}
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <AddTaleDialog onSave={createTale} />
             {tales.map((tale) => (
               <Card key={tale.id} className="flex flex-col">
                 <CardHeader>
@@ -168,6 +181,94 @@ export function AuthorDashboard({ onLogout }: AuthorDashboardProps) {
         </div>
       </div>
     </div>
+  )
+}
+
+function AddTaleDialog({ onSave }: { onSave: (tale: Tale) => void }) {
+  const [open, setOpen] = useState(false)
+  const [formData, setFormData] = useState<Tale>({
+    id: "",
+    title: "",
+    summary: "",
+    fullText: "",
+    image: "",
+    likes: 0,
+    publishedDate: new Date().toISOString().slice(0, 10),
+    readingTime: "5 min read",
+  })
+
+  const updateField = (field: keyof Tale, value: string | number) => {
+    setFormData((current) => ({ ...current, [field]: value }))
+  }
+
+  const handleSave = () => {
+    if (!formData.title.trim() || !formData.fullText.trim()) return
+    onSave({
+      ...formData,
+      id: `tale-${Date.now()}`,
+      title: formData.title.trim(),
+      summary: formData.summary.trim(),
+      fullText: formData.fullText.trim(),
+    })
+    setFormData({
+      id: "",
+      title: "",
+      summary: "",
+      fullText: "",
+      image: "",
+      likes: 0,
+      publishedDate: new Date().toISOString().slice(0, 10),
+      readingTime: "5 min read",
+    })
+    setOpen(false)
+  }
+
+  return (
+    <Card className="border-dashed">
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogTrigger asChild>
+          <Button variant="ghost" className="h-full min-h-48 w-full flex-col gap-3">
+            <Plus className="size-8" />
+            <span>Добавить рассказ</span>
+          </Button>
+        </DialogTrigger>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Новый рассказ</DialogTitle>
+          </DialogHeader>
+          <div className="flex flex-col gap-4">
+            <div>
+              <label className="text-sm font-medium mb-2 block" htmlFor="new-tale-title">Название</label>
+              <Input id="new-tale-title" value={formData.title} onChange={(e) => updateField("title", e.target.value)} placeholder="Название рассказа" />
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-2 block" htmlFor="new-tale-date">Дата публикации</label>
+              <Input id="new-tale-date" type="date" value={formData.publishedDate} onChange={(e) => updateField("publishedDate", e.target.value)} />
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-2 block" htmlFor="new-tale-reading-time">Время чтения</label>
+              <Input id="new-tale-reading-time" value={formData.readingTime} onChange={(e) => updateField("readingTime", e.target.value)} placeholder="например: 5 min read" />
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-2 block" htmlFor="new-tale-summary">Аннотация</label>
+              <Textarea id="new-tale-summary" value={formData.summary} onChange={(e) => updateField("summary", e.target.value)} placeholder="Краткое описание рассказа" rows={4} />
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-2 block" htmlFor="new-tale-content">Текст рассказа</label>
+              <Textarea id="new-tale-content" value={formData.fullText} onChange={(e) => updateField("fullText", e.target.value)} placeholder="Полный текст рассказа" rows={12} />
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-2 block" htmlFor="new-tale-image">URL изображения</label>
+              <Input id="new-tale-image" value={formData.image} onChange={(e) => updateField("image", e.target.value)} placeholder="/path/to/image.jpg или https://..." />
+            </div>
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setOpen(false)}>Отменить</Button>
+            <Button onClick={handleSave} disabled={!formData.title.trim() || !formData.fullText.trim()}>Добавить рассказ</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </Card>
   )
 }
 
