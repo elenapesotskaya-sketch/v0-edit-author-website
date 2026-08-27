@@ -179,6 +179,19 @@ export default function HomePage() {
 }
 
 function TaleCard({ tale }: { tale: Tale }) {
+  const [commentCount, setCommentCount] = useState(0)
+
+  useEffect(() => {
+    const loadCommentCount = async () => {
+      const { getComments } = await import("@/lib/store")
+      setCommentCount(getComments(tale.id).length)
+    }
+
+    loadCommentCount()
+    window.addEventListener("comments-updated", loadCommentCount)
+    return () => window.removeEventListener("comments-updated", loadCommentCount)
+  }, [tale.id])
+
   return (
     <Link href={`/tales/${tale.id}`}>
       <Card className="group hover:shadow-xl transition-shadow cursor-pointer overflow-hidden h-full">
@@ -206,7 +219,7 @@ function TaleCard({ tale }: { tale: Tale }) {
             </div>
             <div className="flex items-center gap-1">
               <MessageCircle className="h-4 w-4" />
-              <span>Comments</span>
+              <span>{commentCount}</span>
             </div>
           </div>
         </CardContent>

@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Scroll, LogOut, Edit3, Upload, Trash2, Bold, Italic } from "lucide-react"
+import { Scroll, LogOut, Edit3, Upload, Trash2, Bold, Italic, Plus, MessageCircle } from "lucide-react"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -78,6 +78,18 @@ export function AuthorDashboard({ onLogout }: AuthorDashboardProps) {
     }
   }
 
+  const createTale = async (newTale: Tale) => {
+    try {
+      const { getTales, saveTales } = await import("@/lib/store")
+      const allTales = [...getTales(), newTale]
+      await saveTales(allTales)
+      setTales(allTales)
+      window.dispatchEvent(new Event("tales-updated"))
+    } catch (error) {
+      console.error("[v0] Error creating tale:", error)
+    }
+  }
+
   const updateTale = async (updatedTale: Tale) => {
     try {
       const { getTales, saveTales } = await import("@/lib/store")
@@ -133,6 +145,7 @@ export function AuthorDashboard({ onLogout }: AuthorDashboardProps) {
                 <Upload className="h-4 w-4" />
                 {isSaving ? "Сохраняю..." : "Сохранить на GitHub"}
               </Button>
+              <AddTaleDialog compact onSave={createTale} />
               <Button
                 variant="outline"
                 onClick={handleLogout}
@@ -156,6 +169,7 @@ export function AuthorDashboard({ onLogout }: AuthorDashboardProps) {
                   <p className="text-sm text-slate-600 dark:text-slate-400 mb-4 line-clamp-2">
                     {tale.summary}
                   </p>
+                  <CommentsManager taleId={tale.id} />
                   <EditTaleDialog
                     tale={tale}
                     onSave={updateTale}
@@ -167,6 +181,151 @@ export function AuthorDashboard({ onLogout }: AuthorDashboardProps) {
           </div>
         </div>
       </div>
+    </div>
+  )
+}
+
+function CommentsManager({ taleId }: { taleId: string }) {
+  const [comments, setComments] = useState<import("@/lib/types").Comment[]>([])
+
+  const loadComments = () => {
+    import("@/lib/store").then(({ getComments }) => setComments(getComments(taleId)))
+  }
+
+  useEffect(() => {
+    loadComments()
+    window.addEventListener("comments-updated", loadComments)
+    return () => window.removeEventListener("comments-updated", loadComments)
+  }, [taleId])
+
+  const handleDelete = async (commentId: string) => {
+    if (!window.confirm("Удалить этот комментарий?")) return
+    const { deleteComment } = await import("@/lib/store")
+    await deleteComment(taleId, commentId)
+    loadComments()
+  }
+
+  return (
+    <div className="mb-4 rounded-md border p-3">
+      <div className="mb-2 flex items-center gap-2 text-sm font-medium">
+        <MessageCircle className="h-4 w-4" />
+        Комментарии ({comments.length})
+      </div>
+      {comments.length === 0 ? (
+        <p className="text-xs text-muted-foreground">Комментариев пока нет</p>
+      ) : (
+        <div className="flex flex-col gap-2">
+          {comments.map((comment) => (
+            <div key={comment.id} className="flex items-start justify-between gap-2 rounded bg-muted/50 p-2 text-xs">
+              <div className="min-w-0">
+                <p className="font-medium">{comment.userName}</p>
+                <p className="break-words text-muted-foreground">{comment.text}</p>
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => handleDelete(comment.id)}
+                aria-label={`Удалить комментарий пользователя ${comment.userName}`}
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function AddTaleDialog({ onSave, compact = false }: { onSave: (tale: Tale) => void; compact?: boolean }) {
+  const [open, setOpen] = useState(false)
+  const [formData, setFormData] = useState<Tale>({
+    id: "",
+    title: "",
+    summary: "",
+    fullText: "",
+    image: "",
+    likes: 0,
+    publishedDate: new Date().toISOString().slice(0, 10),
+    readingTime: "5 min read",
+  })
+
+  const updateField = (field: keyof Tale, value: string | number) => {
+    setFormData((current) => ({ ...current, [field]: value }))
+  }
+
+  const handleSave = () => {
+    if (!formData.title.trim() || !formData.fullText.trim()) return
+    onSave({
+      ...formData,
+      id: `tale-${Date.now()}`,
+      title: formData.title.trim(),
+      summary: formData.summary.trim(),
+      fullText: formData.fullText.trim(),
+    })
+    setFormData({
+      id: "",
+      title: "",
+      summary: "",
+      fullText: "",
+      image: "",
+      likes: 0,
+      publishedDate: new Date().toISOString().slice(0, 10),
+      readingTime: "5 min read",
+    })
+    setOpen(false)
+  }
+
+  return (
+    <div className={compact ? "flex" : "contents"}>
+      <Card className={compact ? "border-0 shadow-none" : "border-dashed"}>
+        <Dialog open={open} onOpenChange={setOpen}>
+          <DialogTrigger asChild>
+            <Button
+              variant={compact ? "default" : "ghost"}
+              className={compact ? "gap-2" : "h-full min-h-48 w-full flex-col gap-3"}
+            >
+              <Plus className={compact ? "size-4" : "size-8"} />
+              <span>Добавить рассказ</span>
+            </Button>
+          </DialogTrigger>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Новый рассказ</DialogTitle>
+          </DialogHeader>
+          <div className="flex flex-col gap-4">
+            <div>
+              <label className="text-sm font-medium mb-2 block" htmlFor="new-tale-title">Название</label>
+              <Input id="new-tale-title" value={formData.title} onChange={(e) => updateField("title", e.target.value)} placeholder="Название рассказа" />
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-2 block" htmlFor="new-tale-date">Дата публикации</label>
+              <Input id="new-tale-date" type="date" value={formData.publishedDate} onChange={(e) => updateField("publishedDate", e.target.value)} />
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-2 block" htmlFor="new-tale-reading-time">Время чтения</label>
+              <Input id="new-tale-reading-time" value={formData.readingTime} onChange={(e) => updateField("readingTime", e.target.value)} placeholder="например: 5 min read" />
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-2 block" htmlFor="new-tale-summary">Аннотация</label>
+              <Textarea id="new-tale-summary" value={formData.summary} onChange={(e) => updateField("summary", e.target.value)} placeholder="Краткое описание рассказа" rows={4} />
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-2 block" htmlFor="new-tale-content">Текст рассказа</label>
+              <Textarea id="new-tale-content" value={formData.fullText} onChange={(e) => updateField("fullText", e.target.value)} placeholder="Полный текст рассказа" rows={12} />
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-2 block" htmlFor="new-tale-image">URL изображения</label>
+              <Input id="new-tale-image" value={formData.image} onChange={(e) => updateField("image", e.target.value)} placeholder="/path/to/image.jpg или https://..." />
+            </div>
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setOpen(false)}>Отменить</Button>
+            <Button onClick={handleSave} disabled={!formData.title.trim() || !formData.fullText.trim()}>Добавить рассказ</Button>
+          </div>
+        </DialogContent>
+        </Dialog>
+      </Card>
     </div>
   )
 }
@@ -275,10 +434,11 @@ function EditTaleDialog({
         </DialogHeader>
         
         <Tabs defaultValue="general" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="general">Основное</TabsTrigger>
             <TabsTrigger value="content">Содержание</TabsTrigger>
             <TabsTrigger value="image">Изображение</TabsTrigger>
+            <TabsTrigger value="comments">Комментарии</TabsTrigger>
           </TabsList>
 
           {/* General Tab */}
@@ -395,6 +555,11 @@ function EditTaleDialog({
                 />
               </div>
             )}
+          </TabsContent>
+
+          {/* Comments Tab */}
+          <TabsContent value="comments" className="space-y-4">
+            <CommentsManager taleId={tale.id} />
           </TabsContent>
         </Tabs>
 
