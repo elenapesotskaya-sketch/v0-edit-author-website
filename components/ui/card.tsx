@@ -2,6 +2,22 @@ import * as React from 'react'
 
 import { cn } from '@/lib/utils'
 
+function formatDateDescription(value: React.ReactNode) {
+  if (typeof value !== 'string') return value
+
+  const match = value.match(/^(\d{4})-(\d{2})(?:-\d{2})?$/)
+  if (!match) return value
+
+  const [, year, month] = match
+  const date = new Date(Number(year), Number(month) - 1, 1)
+  const formatted = new Intl.DateTimeFormat('ru-RU', {
+    month: 'long',
+    year: 'numeric',
+  }).format(date)
+
+  return formatted.charAt(0).toUpperCase() + formatted.slice(1)
+}
+
 function Card({ className, ...props }: React.ComponentProps<'div'>) {
   return (
     <div
@@ -38,13 +54,15 @@ function CardTitle({ className, ...props }: React.ComponentProps<'div'>) {
   )
 }
 
-function CardDescription({ className, ...props }: React.ComponentProps<'div'>) {
+function CardDescription({ className, children, ...props }: React.ComponentProps<'div'>) {
   return (
     <div
       data-slot="card-description"
       className={cn('text-muted-foreground text-sm', className)}
       {...props}
-    />
+    >
+      {formatDateDescription(children)}
+    </div>
   )
 }
 
