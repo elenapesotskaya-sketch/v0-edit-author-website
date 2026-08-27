@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Scroll, LogOut, Edit3, Upload, Trash2, Bold, Italic, Plus, MessageCircle, X } from "lucide-react"
+import { Scroll, LogOut, Edit3, Upload, Trash2, Bold, Italic, Plus, MessageCircle } from "lucide-react"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -227,7 +227,7 @@ function CommentsManager({ taleId }: { taleId: string }) {
                 onClick={() => handleDelete(comment.id)}
                 aria-label={`Удалить комментарий пользователя ${comment.userName}`}
               >
-                <X className="h-4 w-4" />
+                <Trash2 className="h-4 w-4" />
               </Button>
             </div>
           ))}
@@ -434,10 +434,11 @@ function EditTaleDialog({
         </DialogHeader>
         
         <Tabs defaultValue="general" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="general">Основное</TabsTrigger>
             <TabsTrigger value="content">Содержание</TabsTrigger>
             <TabsTrigger value="image">Изображение</TabsTrigger>
+            <TabsTrigger value="comments">Комментарии</TabsTrigger>
           </TabsList>
 
           {/* General Tab */}
@@ -554,6 +555,11 @@ function EditTaleDialog({
                 />
               </div>
             )}
+          </TabsContent>
+
+          {/* Comments Tab */}
+          <TabsContent value="comments" className="space-y-4">
+            <CommentsManager taleId={tale.id} />
           </TabsContent>
         </Tabs>
 
