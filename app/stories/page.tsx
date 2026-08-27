@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { AuthorLogin } from "@/components/author-login"
 import { AuthorDashboard } from "@/components/author-dashboard"
-import { getTales } from "@/lib/store"
+import { getTales, getComments } from "@/lib/store"
 import type { Tale } from "@/lib/types"
 
 export default function StoriesPage() {
@@ -149,6 +149,15 @@ export default function StoriesPage() {
 }
 
 function TaleCard({ tale }: { tale: Tale }) {
+  const [commentCount, setCommentCount] = useState(0)
+
+  useEffect(() => {
+    const updateCommentCount = () => setCommentCount(getComments(tale.id).length)
+    updateCommentCount()
+    window.addEventListener("comments-updated", updateCommentCount)
+    return () => window.removeEventListener("comments-updated", updateCommentCount)
+  }, [tale.id])
+
   return (
     <Link href={`/tales/${tale.id}`}>
       <Card className="group hover:shadow-xl transition-shadow cursor-pointer overflow-hidden h-full">
@@ -176,7 +185,7 @@ function TaleCard({ tale }: { tale: Tale }) {
             </div>
             <div className="flex items-center gap-1">
               <MessageCircle className="h-4 w-4" />
-              <span>Comments</span>
+              <span>{commentCount}</span>
             </div>
           </div>
         </CardContent>
