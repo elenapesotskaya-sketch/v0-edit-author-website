@@ -51,7 +51,9 @@ export default function StoriesPage() {
   }, [])
 
   const filteredTales = tales.filter((tale) => {
-    const query = searchQuery.toLowerCase()
+    const query = searchQuery.trim().toLowerCase()
+    if (!query) return true
+
     return (
       tale.title.toLowerCase().includes(query) ||
       tale.summary.toLowerCase().includes(query) ||
@@ -122,6 +124,7 @@ export default function StoriesPage() {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-10"
+              autoComplete="off"
             />
           </div>
           <div className="flex gap-2">
