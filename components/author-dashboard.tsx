@@ -145,6 +145,7 @@ export function AuthorDashboard({ onLogout }: AuthorDashboardProps) {
                 <Upload className="h-4 w-4" />
                 {isSaving ? "Сохраняю..." : "Сохранить на GitHub"}
               </Button>
+              <AddTaleDialog compact onSave={createTale} />
               <Button
                 variant="outline"
                 onClick={handleLogout}
@@ -158,7 +159,6 @@ export function AuthorDashboard({ onLogout }: AuthorDashboardProps) {
 
           {/* Tales Grid */}
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <AddTaleDialog onSave={createTale} />
             {tales.map((tale) => (
               <Card key={tale.id} className="flex flex-col">
                 <CardHeader>
@@ -184,7 +184,7 @@ export function AuthorDashboard({ onLogout }: AuthorDashboardProps) {
   )
 }
 
-function AddTaleDialog({ onSave }: { onSave: (tale: Tale) => void }) {
+function AddTaleDialog({ onSave, compact = false }: { onSave: (tale: Tale) => void; compact?: boolean }) {
   const [open, setOpen] = useState(false)
   const [formData, setFormData] = useState<Tale>({
     id: "",
@@ -224,14 +224,18 @@ function AddTaleDialog({ onSave }: { onSave: (tale: Tale) => void }) {
   }
 
   return (
-    <Card className="border-dashed">
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogTrigger asChild>
-          <Button variant="ghost" className="h-full min-h-48 w-full flex-col gap-3">
-            <Plus className="size-8" />
-            <span>Добавить рассказ</span>
-          </Button>
-        </DialogTrigger>
+    <div className={compact ? "flex" : "contents"}>
+      <Card className={compact ? "border-0 shadow-none" : "border-dashed"}>
+        <Dialog open={open} onOpenChange={setOpen}>
+          <DialogTrigger asChild>
+            <Button
+              variant={compact ? "default" : "ghost"}
+              className={compact ? "gap-2" : "h-full min-h-48 w-full flex-col gap-3"}
+            >
+              <Plus className={compact ? "size-4" : "size-8"} />
+              <span>Добавить рассказ</span>
+            </Button>
+          </DialogTrigger>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Новый рассказ</DialogTitle>
@@ -267,8 +271,9 @@ function AddTaleDialog({ onSave }: { onSave: (tale: Tale) => void }) {
             <Button onClick={handleSave} disabled={!formData.title.trim() || !formData.fullText.trim()}>Добавить рассказ</Button>
           </div>
         </DialogContent>
-      </Dialog>
-    </Card>
+        </Dialog>
+      </Card>
+    </div>
   )
 }
 
