@@ -12,6 +12,20 @@ import { AuthorDashboard } from "@/components/author-dashboard"
 import { getTales, getComments } from "@/lib/store"
 import type { Tale } from "@/lib/types"
 
+function formatStoryDate(value: string): string {
+  const match = value.match(/^(\d{4})-(\d{2})/)
+  if (!match) return value
+
+  const [, year, month] = match
+  const date = new Date(Number(year), Number(month) - 1, 1)
+  const formatted = new Intl.DateTimeFormat("ru-RU", {
+    month: "long",
+    year: "numeric",
+  }).format(date)
+
+  return formatted.charAt(0).toUpperCase() + formatted.slice(1)
+}
+
 export default function StoriesPage() {
   const [isAuthorLoggedIn, setIsAuthorLoggedIn] = useState(false)
   const [tales, setTales] = useState<Tale[]>([])
@@ -35,8 +49,6 @@ export default function StoriesPage() {
       window.removeEventListener("likes-updated", handleUpdate)
     }
   }, [])
-
-
 
   const filteredTales = tales.filter((tale) => {
     const query = searchQuery.toLowerCase()
@@ -171,7 +183,7 @@ function TaleCard({ tale }: { tale: Tale }) {
         <CardHeader>
           <CardTitle className="font-serif text-2xl line-clamp-2">{tale.title}</CardTitle>
           <CardDescription className="flex items-center gap-4 text-xs">
-            <span>{tale.publishedDate}</span>
+            <span>{formatStoryDate(tale.publishedDate)}</span>
             <span>•</span>
             <span>{tale.readingTime}</span>
           </CardDescription>
