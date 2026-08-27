@@ -5,7 +5,7 @@ import type { Tale, AuthorInfo } from "@/lib/types"
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { tales, author } }: { tales: Tale[]; author?: AuthorInfo } = body
+    const { tales, author } = body as { tales: Tale[]; author?: AuthorInfo }
 
     if (!Array.isArray(tales)) {
       return NextResponse.json(
